@@ -7,12 +7,17 @@ function AddLesson() {
     client_id: "",
     price: "",
     lessonDateTime: "",
+    lessonPackageId: "",
   });
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     let newValue = value;
-    if (name === "user_id" || name === "client_id") {
+    if (
+      name === "user_id" ||
+      name === "client_id" ||
+      name === "lessonPackageId"
+    ) {
       newValue = value ? parseInt(value, 10) : ""; // Convert to integer for user_id and client_id
     } else if (name === "price") {
       //   newValue = 430.14; // Keep as string with two decimal places for price
@@ -56,7 +61,7 @@ function AddLesson() {
       <input
         type="number"
         name="user_id"
-        value={formData.userId}
+        value={formData.user_id}
         onChange={handleInputChange}
         placeholder="User ID"
         required
@@ -64,7 +69,7 @@ function AddLesson() {
       <input
         type="number"
         name="client_id"
-        value={formData.clientId}
+        value={formData.client_id}
         onChange={handleInputChange}
         placeholder="Client ID"
       />
@@ -75,26 +80,15 @@ function AddLesson() {
         onChange={handleInputChange}
         placeholder="Price"
       />
-      {/* <input
-          type="number"
-          name="lessonPackageId"
-          value={newLesson.lessonPackageId}
-          onChange={handleInputChange}
-          placeholder="Package ID"
-        /> */}
-      {/* <input
-          type="date"
-          name="date"
-          value={newLesson.date}
-          onChange={handleInputChange}
-        />
-        <input
-          type="time"
-          name="time"
-          value={newLesson.time}
-          onChange={handleInputChange}
-        />
-        <button onClick={handleAddLesson}>Add Lesson</button> */}
+
+      <input
+        type="number"
+        name="lessonPackageId"
+        value={formData.lessonPackageId}
+        onChange={handleInputChange}
+        placeholder="Lesson Package ID"
+      />
+
       <input
         type="datetime-local"
         name="lessonDateTime"

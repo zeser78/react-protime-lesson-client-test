@@ -19,19 +19,20 @@ type Lesson struct {
 	ID     int64 `json:"id"`
 	UserID int64 `json:"user_id"`
 	// Name       string `json:"name"`
-	ClientID       int64  `json:"client_id"`
-	ClientName     string `json:"client_name"`
-	Description    string `json:"description"`
-	Price          float64
-	Place          string `json:"place"`
-	Status         string
-	LessonDate     string
-	LessonDateTime time.Time
-	FormattedDate  string
-	LessonTime     string
-	FormattedTime  time.Time
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	ClientID        int64  `json:"client_id"`
+	LessonPackageID int64  `json:"lesson_package_id"` // added field
+	ClientName      string `json:"client_name"`
+	Description     string `json:"description"`
+	Price           float64
+	Place           string `json:"place"`
+	Status          string
+	LessonDate      string
+	LessonDateTime  time.Time
+	FormattedDate   string
+	LessonTime      string
+	FormattedTime   time.Time
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 type Client struct {
@@ -39,6 +40,18 @@ type Client struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`
 	// add other fields as required
+}
+
+type LessonPackage struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
+type LessonPackageTrack struct {
+	ID               int64 `json:"id"`
+	ClientID         int64 `json:"client_id"`
+	LessonPackageID  int64 `json:"lesson_package_id"`
+	RemainingLessons int64 `json:"remaining_lessons"`
 }
 
 func main() {
@@ -109,7 +122,6 @@ func getData(w http.ResponseWriter, r *http.Request) {
 }
 
 func addLesson(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Called addLesson")
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
@@ -138,6 +150,41 @@ func addLesson(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	lessonPackageID := request.LessonPackageID // Get lesson package ID from request or default to None
+	clientID := request.ClientID
+
+	// Update the lesson_package_tracks table
+	// _, err = db.Exec(`
+	//     UPDATE lesson_package_tracks_2
+	//     SET remaining_lessons = remaining_lessons - 1
+	//     WHERE client_id = ? AND lesson_package_id = ?`, clientID, lessonPackageID)
+	// if err != nil {
+	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+	// 	return
+	// }
+	// Check if a record exists
+	err = db.QueryRow(`
+SELECT 1 FROM lesson_package_tracks_2
+WHERE client_id = ? AND lesson_package_id = ?`, clientID, lessonPackageID).Scan(&recordExists)
+
+	if err != nil && err != sql.ErrNoRows {
+		// handle error
+	}
+
+	// If record exists, update it
+	if err != sql.ErrNoRows {
+		_, err = db.Exec(`
+	UPDATE lesson_package_tracks_2
+	SET remaining_lessons = remaining_lessons - 1 
+	WHERE client_id = ? AND lesson_package_id = ?`, clientID, lessonPackageID)
+	} else {
+		// If record doesn't exist, insert a new one
+		_, err = db.Exec(`
+	INSERT INTO lesson_package_tracks_2 (client_id, lesson_package_id, remaining_lessons)
+	VALUES (?, ?, ?)`, clientID, lessonPackageID, initialLessons-1)
+	}
+
+	// handle error if any
 
 	w.WriteHeader(http.StatusCreated)
 }
@@ -176,6 +223,27 @@ func ensureTableExists() {
             FOREIGN KEY (client_id) REFERENCES clients_2(id)
         );
         `,
+		`
+		CREATE TABLE IF NOT EXISTS lesson_packages_2 (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			name VARCHAR(255) NOT NULL UNIQUE,
+			total_lessons INT NOT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+		);
+        `,
+		`
+		CREATE TABLE IF NOT EXISTS lesson_package_tracks_2 (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			client_id INT NOT NULL,
+			lesson_package_id INT NOT NULL,
+			remaining_lessons INT NOT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			FOREIGN KEY (client_id) REFERENCES clients_2(id),
+			FOREIGN KEY (lesson_package_id) REFERENCES lesson_packages(id)
+		);
+        `,
 	}
 
 	// Execute each SQL statement
@@ -189,3 +257,6 @@ func ensureTableExists() {
 
 // INSERT INTO users_2 (username) VALUES ('Sergio');
 // INSERT INTO clients_2 (user_id, name) VALUES (1, 'Nadia');
+//TODO: Get the intial value and recor to check the lessonPacketId
+//TODO: Check when th lesson package is None.
+//TODO: Check when is lesson remain is zero and it needs to renew or wait to buy another one.
